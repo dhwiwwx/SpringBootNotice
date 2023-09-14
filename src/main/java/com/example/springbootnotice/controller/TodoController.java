@@ -2,6 +2,7 @@ package com.example.springbootnotice.controller;
 
 import com.example.springbootnotice.dto.ResponseDTO;
 import com.example.springbootnotice.dto.TodoDTO;
+import com.example.springbootnotice.model.TodoEntity;
 import com.example.springbootnotice.service.TodoService;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("todo")
@@ -27,7 +29,35 @@ public class TodoController {
 
     @PostMapping
     public ResponseEntity<?> createTodo(@RequestBody TodoDTO dto){
+        try {
+            String temporaryUserId = "temporary-user"; // temporary user id
 
+            // TodoEntity로 변환
+            TodoEntity entity = TodoDTO.todoEntity(dto);
+
+            // id를 null로 초기화한다. 생성 당시에는 id가 없어야 하기 때문에
+            entity.setId(null);
+
+            // 임시 유저 아이디를 생성해준다.
+            entity.setUserId(temporaryUserId);
+
+            // 서비스를 이용해 todo 엔티티를 생성한다.
+            List<TodoEntity> entities = todoService.create(entity);
+
+            // 자바 스트림을 이용해 리턴된 엔티티 리스트를 Todo리스트로 변환
+            List<TodoDTO> dtos = entities.stream().map(TodoDTO::new).collect(Collectors.toList());
+
+            //반환되 TodoDTO리스트를 이용해 ResponseDTO를 초기화한다
+            ResponseDTO<TodoDTO> response = ResponseDTO.<TodoDTO>builder().data(dtos).build();
+
+            // ResponseDTO를 리턴한다.
+            return ResponseEntity.ok().body(response);
+        }catch (Exception e){
+            // 혹시 예외가 나는 경우 dto대신 error에 메세지를 넣어 리턴한다.
+            String error = e.getMessage();
+            ResponseDTO<TodoDTO> response = ResponseDTO.<TodoDTO>builder().error(error).build();
+            return ResponseEntity.badRequest().body(response);
+        }
     }
 }
 
