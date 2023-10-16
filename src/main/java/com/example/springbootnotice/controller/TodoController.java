@@ -14,19 +14,25 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("todo")
+@RequestMapping("/todo")
 public class TodoController {
     @Autowired // 빈을 찾아서 그빈을 이 인스턴스 멤버변수에 연결하라는 뜻
     private TodoService todoService;
-    @GetMapping("/test")
-    public ResponseEntity<?> testTodo(){
-        String str = todoService.testService(); // 테스트 서비스 사용
-        List<String> list = new ArrayList<>();
-        list.add(str);
-        ResponseDTO<String> response = ResponseDTO.<String>builder().data(list).build();
+
+    @GetMapping
+    public ResponseEntity<?> retrieveTodoList(){
+        String temporaryUserId = "temporary-user";
+
+        // 서비스 메서드의 retrieve 메서드를 사용해 Todo 리스트를 가지고온다
+        List<TodoEntity> entities = todoService.retrieve(temporaryUserId);
+
+        // 자바 스트림을 이용해 리턴된 엔티티 리스트를 TodoList로 변환한다.
+        List<TodoDTO> dtos = entities.stream().map(TodoDTO::new).collect(Collectors.toList());
+
+        // 변환된 TodoDTO 리스트를 이용해 ResponseDTO를 초기화 한다.
+        ResponseDTO<TodoDTO> response = ResponseDTO.<TodoDTO>builder().data(dtos).build();
         return ResponseEntity.ok().body(response);
     }
-
     @PostMapping
     public ResponseEntity<?> createTodo(@RequestBody TodoDTO dto){
         try {
@@ -58,6 +64,54 @@ public class TodoController {
             ResponseDTO<TodoDTO> response = ResponseDTO.<TodoDTO>builder().error(error).build();
             return ResponseEntity.badRequest().body(response);
         }
+
+    }
+
+    @PutMapping
+    public ResponseEntity<?> updateTodo(@RequestBody TodoDTO dto){
+        String temporaryUserId = "temporary-user";
+
+        //dto를 entity로 변환한다.
+        TodoEntity entity = TodoDTO.todoEntity(dto);
+
+        // id를 temporaryUserId로 초기화한다.
+        entity.setUserId(temporaryUserId);
+
+        // 서비스를 이용해 entity를 업데이트 한다.
+        List<TodoEntity> entities = todoService.update(entity);
+
+        // 자바 스트림을 이용해 리턴된 엔티티 리스트를 TodoDTO리스트로 변환한다.
+        List<TodoDTO> dtos = entities.stream().map(TodoDTO::new).collect(Collectors.toList());
+
+        // 변환된 TodoDTO 리스트를 잉ㅇ해 ResponseDTO를 초기화한다.
+        ResponseDTO<TodoDTO> response = ResponseDTO.<TodoDTO>builder().data(dtos).build();
+
+        // ResponseDTO를 리턴한다.
+        return ResponseEntity.ok().body(response);
+    }
+
+    @DeleteMapping
+    public ResponseEntity<?> deleteTodo(@RequestBody TodoDTO dto){
+        try {
+            String temporaryUserId = "temporary-user";
+
+            TodoEntity entity = TodoDTO.todoEntity(dto);
+
+            entity.setUserId(temporaryUserId);
+
+            List<TodoEntity> entities = todoService.delete(entity);
+
+            List<TodoDTO> dtos = entities.stream().map(TodoDTO::new).collect(Collectors.toList());
+
+            ResponseDTO<TodoDTO> response = ResponseDTO.<TodoDTO>builder().data(dtos).build();
+
+            return ResponseEntity.ok().body(response);
+        } catch (Exception e){
+            String error = e.getMessage();
+            ResponseDTO<TodoDTO> response = ResponseDTO.<TodoDTO>builder().error(error).build();
+            return ResponseEntity.badRequest().body(response);
+        }
+
     }
 }
 
